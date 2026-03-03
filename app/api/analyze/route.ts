@@ -161,21 +161,33 @@ export async function POST(request: NextRequest) {
 
     const reviewsText = reviews.map((r, i) => `${i + 1}. ${r}`).join("\n");
 
-    const prompt = `Analyze the following movie audience reviews and return a strict sentiment report.
+    const prompt = `You are a strict sentiment analyst for movie audience reviews.
 
+INPUT REVIEWS:
 ${reviewsText}
 
-Requirements:
-- Detect sentiment in 3 parts only: positive, mixed, negative.
-- Provide a short, neutral summary of overall reception.
-- Return key themes as concise phrases.
-- Return integer percentages for positive, mixed, negative that sum exactly to 100.
-- Set classification to the dominant sentiment among positive/mixed/negative.
-- Set confidence as an integer from 0 to 100 based on consistency of sentiment in the reviews.
-- If evidence is balanced or conflicting, choose "Mixed".
-- Do not output 100/0/0 unless every review clearly has the same tone.
+TASK:
+Produce one JSON object only (no markdown, no preface, no trailing text).
 
-Return JSON only, with this exact schema:
+ANALYSIS RULES:
+1) Sentiment buckets are exactly: positive, mixed, negative.
+2) Weigh all reviews equally.
+3) "Mixed" means ambivalent language, clear pros+cons, or conflicting overall evidence.
+4) Do NOT output extreme split (100/0/0) unless every review clearly matches one bucket.
+5) Keep summary factual and neutral in tone, not promotional.
+6) Key themes must be short noun phrases (2-4 words), no full sentences.
+
+SCORING RULES:
+- distribution.positive + distribution.mixed + distribution.negative must equal exactly 100.
+- classification must be the highest distribution bucket:
+  - positive -> "Positive"
+  - mixed -> "Mixed"
+  - negative -> "Negative"
+- confidence must be an integer 0-100:
+  - high confidence when language is consistent across reviews
+  - lower confidence when reviews are conflicted or sparse
+
+OUTPUT SCHEMA (EXACT KEYS):
 {
   "summary": "3-5 sentences",
   "classification": "Positive | Mixed | Negative",
@@ -187,7 +199,15 @@ Return JSON only, with this exact schema:
     "negative": 0
   }
 }
-Do not include markdown, comments, or extra text.`;
+
+VALIDATION BEFORE RESPONDING:
+- summary is non-empty
+- classification is one of Positive/Mixed/Negative
+- confidence is integer
+- keyThemes length is 3-6
+- distribution values are integers that sum to 100
+
+Return JSON only.`;
 
     const result = await model.generateContent(prompt);
     const response = result.response;

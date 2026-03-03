@@ -68,7 +68,37 @@ async function fetchExtendedCelebrities(movie: Movie): Promise<string[]> {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `Return 8-10 REAL celebrity names connected to this movie, prioritizing principal cast members.\nMovie: ${movie.Title} (${movie.Year})\nIMDb ID: ${movie.imdbID}\nKnown actors: ${movie.Actors}\nDirector: ${movie.Director}\nWriter: ${movie.Writer}\n\nRules:\n- Names only (no roles, no character names).\n- Prefer actors first, then director/writer if needed.\n- Return strict JSON only:\n{\"celebrities\": [\"Name 1\", \"Name 2\"]}`;
+    const prompt = `You are enriching movie credits with real people names.
+
+MOVIE:
+- Title: ${movie.Title}
+- Year: ${movie.Year}
+- IMDb ID: ${movie.imdbID}
+- Known actors (OMDb): ${movie.Actors}
+- Director: ${movie.Director}
+- Writer: ${movie.Writer}
+
+TASK:
+Return 8-10 real celebrity names strongly associated with this specific movie.
+
+PRIORITY ORDER:
+1) Principal cast (most important)
+2) Supporting cast
+3) Director
+4) Writer
+
+STRICT RULES:
+- Output only person names, no roles and no character names.
+- No duplicates.
+- No fictional characters.
+- No studios, franchises, or generic text.
+- Keep spellings clean and standard.
+- Prefer widely recognized names when uncertain.
+
+OUTPUT FORMAT (JSON ONLY):
+{"celebrities":["Name 1","Name 2","Name 3"]}
+
+Return JSON only, no markdown and no extra text.`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
